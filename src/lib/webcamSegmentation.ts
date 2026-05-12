@@ -44,6 +44,8 @@ export class WebcamSegmentationRenderer {
 	private disposed = false;
 	private segmenter: ImageSegmenter | null = null;
 	private lastTs = -1;
+	private firstFrameDrawn = false;
+	private onFirstFrame?: () => void;
 
 	constructor(video: HTMLVideoElement, canvas: HTMLCanvasElement, mode: WebcamBackgroundMode) {
 		this.video = video as VideoWithFrameCallback;
@@ -58,7 +60,8 @@ export class WebcamSegmentationRenderer {
 		this.mode = mode;
 	}
 
-	async start(): Promise<void> {
+	async start(onFirstFrame?: () => void): Promise<void> {
+		this.onFirstFrame = onFirstFrame;
 		try {
 			this.segmenter = await getSegmenter();
 		} catch (err) {
@@ -176,5 +179,10 @@ export class WebcamSegmentationRenderer {
 
 		ctx.drawImage(fg, 0, 0);
 		ctx.restore();
+
+		if (!this.firstFrameDrawn) {
+			this.firstFrameDrawn = true;
+			this.onFirstFrame?.();
+		}
 	}
 }

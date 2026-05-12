@@ -258,6 +258,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		const webcamVideoRef = useRef<HTMLVideoElement | null>(null);
 		const webcamSegCanvasRef = useRef<HTMLCanvasElement | null>(null);
 		const webcamSegRendererRef = useRef<WebcamSegmentationRenderer | null>(null);
+		const [segCanvasReady, setSegCanvasReady] = useState(false);
 		const containerRef = useRef<HTMLDivElement | null>(null);
 		const appRef = useRef<Application | null>(null);
 		const videoSpriteRef = useRef<Sprite | null>(null);
@@ -1658,15 +1659,17 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					webcamSegRendererRef.current.dispose();
 					webcamSegRendererRef.current = null;
 				}
+				setSegCanvasReady(false);
 				return;
 			}
+			setSegCanvasReady(false);
 			if (webcamSegRendererRef.current) {
-				webcamSegRendererRef.current.setMode(webcamBackgroundMode);
-				return;
+				webcamSegRendererRef.current.dispose();
+				webcamSegRendererRef.current = null;
 			}
 			const renderer = new WebcamSegmentationRenderer(video, canvas, webcamBackgroundMode);
 			webcamSegRendererRef.current = renderer;
-			renderer.start();
+			renderer.start(() => setSegCanvasReady(true));
 			return () => {
 				renderer.dispose();
 				if (webcamSegRendererRef.current === renderer) {
@@ -1799,7 +1802,9 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 											boxShadow: useClipPath ? "none" : webcamCssBoxShadow,
 											backgroundColor:
 												webcamBackgroundMode === "transparent" ? "transparent" : "#000",
-											visibility: webcamBackgroundMode === "off" ? "visible" : "hidden",
+											// Keep video visible until canvas has its first segmented frame to avoid a blank flash while WASM + model load.
+											visibility:
+												webcamBackgroundMode === "off" || !segCanvasReady ? "visible" : "hidden",
 										}}
 										onPointerDown={handleWebcamPointerDown}
 										onPointerMove={handleWebcamPointerMove}
